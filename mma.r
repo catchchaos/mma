@@ -1,110 +1,112 @@
 
 mma<-function()
 {
-smin <- 10      #minimal s scale used, when calculating Fq(s) functions family (default 10)
-smax <- 600     #maximal s scale used, when calculating Fq(s) functions family, has to be multiple of 5 (default 600; in general should be near to N/50, where N is a time series length)
-qmin <- -5      #minimal multifractal parameter q used (default -5)
-qmax <- 5       #maximal cmultifractal parameter q used (deafault 5)
-qlist <- seq(from=qmin, to=qmax, by=0.1)
-#cat(qlist);
-# We can't have q value = 0 because we take power of 1/q at one point
-for(i in 1:length(qlist)){
-  if(qlist[i]==0){
-    qlist[i]<-0.001
-  }
+	smin <- 10      #minimal s scale used, when calculating Fq(s) functions family (default 10)
+	smax <- 600     #maximal s scale used, when calculating Fq(s) functions family, has to be multiple of 5 (default 600; in general should be near to N/50, where N is a time series length)
+	qmin <- -5      #minimal multifractal parameter q used (default -5)
+	qmax <- 5       #maximal cmultifractal parameter q used (deafault 5)
+	qlist <- seq(from=qmin, to=qmax, by=0.1)
+	#cat(qlist);
+	# We can't have q value = 0 because we take power of 1/q at one point
+	for(i in 1:length(qlist)) {
+		if(qlist[i]==0) {
+			qlist[i]<-0.001
+		}
+	}
+	#cat(qlist);
+
+	# Read data from file - numbers alone, one per line in text file
+		signal <- read.table("data.txt")
+	# Find profile of the signal by calculating cumulative sum for the whole series
+	prof = apply(signal[1][1],2,cumsum)
+	slength = length(prof)
+
+	# fqs below is the matrix containing Fluctuations. 
+	# We store it in matrix form as each pair of values of q (multifractal parameter) and s (scale) has a particular value of fluctuation. These are all stored together.
+	# We need to set the size of the fqs matrix beforehand to add rows, hence we calculate number of iterations and assign that
+	iter <- length(qlist*(smax-smin))
+	fqs <- matrix(NA, nrow=iter, ncol=3)
+	i<-1
+
+	for (s in smin:smax) {
+		  #Reshape the profiled signal into a matrix, so that we can extract segments
+		ind <- c(1:length(prof))
+		coordinates <- t(matrix(ind[1:(length(prof)-(length(prof)%%s))],s,(length(prof)-(length(prof)%%s))/s))
+		segments<-matrix(prof, nrow(coordinates), ncol(coordinates), byrow=T)
+		#Set of bases upto s
+		xbase<-seq(1,s,1)
+		f2nis<-c()
+		for(ni in 1:nrow(segments)){
+			# Obtain fits for all bases and calculate the mean variance for the same
+			seg<-segments[ni,]
+			fit<-lm(seg ~ xbase + I(xbase^2))
+			#print (fit[[1]])
+			sum<-0
+			for(i in 1:length(xbase)){
+				b<-(fit[[1]][[1]]*1+fit[[1]][[2]]*(xbase[i]^1)+fit[[1]][[3]]*(xbase[i]^2))
+				sum<-sum+((seg[i]-b)^2)
+			}
+		    variance<-(sum/length(xbase))
+		    f2nis<-c(f2nis, variance)
+		}
+	  
+		for(q in qlist){
+			# print(i)
+			# Calculating fluctuations and storing
+			row<-c(q,s,mean((f2nis^(q/2)))^(1/q))
+			fqs<-rbind(fqs, row)
+			i<-i+1
+		}
+	}
+	# on.exit()
+	# Remove redundant rows
+	fqs=na.omit(fqs)
+
+	# Calculate log values of scales and fluctuations 
+	fqsll <- cbind(fqs[,1], fqs[,2], log(fqs[,2]), log(fqs[,3]));
+
+	#We can increase the value of spacing and qlist to get more data points in the surface but the plot will be less smooth and calculations will be lengthy
+	sspacing <- ((smax/5)-smin)/11
+	qlist <- seq(from=qmin, to=qmax, by=1)
+	for(i in 1:length(qlist)){
+		if(qlist[i]==0){
+			qlist[i]<-0.001
+		}
+	}
+	#print("Fqsll is:")
+	#print(fqsll)
+
+	# Calculating hurst exponent to be stored in hqs, for each unique pair of (q,s)
+	# This will be used to make a 3D Hurst Surface
+	hqRows<-(((smax/5)-smin)/sspacing)*length(qlist)
+	hqs <- matrix(NA, nrow=hqRows, ncol=3)
+	for(sit in seq(smin, (smax/5), sspacing)){
+		# print(sit)
+		for(qit in qlist){
+			# print(qit)
+			fittemp <- fqsll[fqsll[,1] == qit & fqsll[,2] >= sit & fqsll[,2] <= 5*sit,]
+			htemp<-lm(fittemp[,4]~fittemp[,3])
+			row<-c(qit, 3*sit, htemp[[1]][[2]])
+			hqs<-rbind(hqs, row)
+		}
+		#print(fittemp)
+	}
+
+	# Remove redundant rows again
+	hqs<-na.omit(hqs)
+	# Reshape hqs values to a matrix so that we can plot it as a surface
+	hplot<-t(matrix(hqs[,3],nrow=length(hqs[,3])/length(qlist),byrow=T))
+
+	# Generate the desired number of colors from this palette
+	jet.colors <- colorRampPalette( c( "#2c00cc", "#cc0000") ) 
+	nbcol <- 100
+	color <- jet.colors(nbcol)
+
+	# Compute the z-value at the facet centres
+	zfacet <- hplot[-1, -1] + hplot[-1, -ncol(hplot)] + hplot[-nrow(hplot), -1] + hplot[-nrow(hplot), -ncol(hplot)]
+	# Recode facet z-values into color indices
+	facetcol <- cut(zfacet, nbcol)
+	persp(c(unique(hqs[,1])),c(unique(hqs[,2])), hplot, zlim=c(0,2.5),col = color[facetcol], xlab="Multifractal Parameters(Q)", ylab="Scales(S)", zlab = "Hurst Exponent", phi=25, theta=-45, ticktype="detailed")
 }
-#cat(qlist);
 
-# Read data from file - numbers alone, one per line in text file
-signal <- read.table("data.txt")
-# Find profile of the signal by calculating cumulative sum for the whole series
-prof = apply(signal[1][1],2,cumsum)
-slength = length(prof)
-
-# fqs below is the matrix containing Fluctuations. 
-# We store it in matrix form as each pair of values of q (multifractal parameter) and s (scale) has a particular value of fluctuation. These are all stored together.
-# We need to set the size of the fqs matrix beforehand to add rows, hence we calculate number of iterations and assign that
-iter <- length(qlist*(smax-smin))
-fqs <- matrix(NA, nrow=iter, ncol=3)
-i<-1
-
-for (s in smin:smax) {
-  #Reshape the profiled signal into a matrix, so that we can extract segments
-  ind <- c(1:length(prof))
-  coordinates <- t(matrix(ind[1:(length(prof)-(length(prof)%%s))],s,(length(prof)-(length(prof)%%s))/s))
-  segments<-matrix(prof, nrow(coordinates), ncol(coordinates), byrow=T)
-  #Set of bases upto s
-  xbase<-seq(1,s,1)
-  f2nis<-c()
-  for(ni in 1:nrow(segments)){
-    # Obtain fits for all bases and calculate the mean variance for the same
-    seg<-segments[ni,]
-    fit<-lm(seg ~ xbase + I(xbase^2))
-    #print (fit[[1]])
-    sum<-0
-    for(i in 1:length(xbase)){
-      b<-(fit[[1]][[1]]*1+fit[[1]][[2]]*(xbase[i]^1)+fit[[1]][[3]]*(xbase[i]^2))
-      sum<-sum+((seg[i]-b)^2)
-    }
-    variance<-(sum/length(xbase))
-    f2nis<-c(f2nis, variance)
-  }
-  
-  for(q in qlist){
-    # print(i)
-    # Calculating fluctuations and storing
-    row<-c(q,s,mean((f2nis^(q/2)))^(1/q))
-    fqs<-rbind(fqs, row)
-    i<-i+1
-  }
-}
-# on.exit()
-# Remove redundant rows
-fqs=na.omit(fqs)
-
-# Calculate log values of scales and fluctuations 
-fqsll <- cbind(fqs[,1], fqs[,2], log(fqs[,2]), log(fqs[,3]));
-
-#We can increase the value of spacing and qlist to get more data points in the surface but the plot will be less smooth and calculations will be lengthy
-sspacing <- ((smax/5)-smin)/11
-qlist <- seq(from=qmin, to=qmax, by=1)
-for(i in 1:length(qlist)){
-  if(qlist[i]==0){
-    qlist[i]<-0.001
-  }
-}
-#print("Fqsll is:")
-#print(fqsll)
-
-# Calculating hurst exponent to be stored in hqs, for each unique pair of (q,s)
-# This will be used to make a 3D Hurst Surface
-hqRows<-(((smax/5)-smin)/sspacing)*length(qlist)
-hqs <- matrix(NA, nrow=hqRows, ncol=3)
-for(sit in seq(smin, (smax/5), sspacing)){
-  # print(sit)
-  for(qit in qlist){
-    # print(qit)
-    fittemp <- fqsll[fqsll[,1] == qit & fqsll[,2] >= sit & fqsll[,2] <= 5*sit,]
-    htemp<-lm(fittemp[,4]~fittemp[,3])
-    row<-c(qit, 3*sit, htemp[[1]][[2]])
-    hqs<-rbind(hqs, row)
-  }
-  #print(fittemp)
-}
-
-# Remove redundant rows again
-hqs<-na.omit(hqs)
-# Reshape hqs values to a matrix so that we can plot it as a surface
-hplot<-t(matrix(hqs[,3],nrow=length(hqs[,3])/length(qlist),byrow=T))
-
-# Generate the desired number of colors from this palette
-jet.colors <- colorRampPalette( c( "#2c00cc", "#cc0000") ) 
-nbcol <- 100
-color <- jet.colors(nbcol)
-
-# Compute the z-value at the facet centres
-zfacet <- hplot[-1, -1] + hplot[-1, -ncol(hplot)] + hplot[-nrow(hplot), -1] + hplot[-nrow(hplot), -ncol(hplot)]
-# Recode facet z-values into color indices
-facetcol <- cut(zfacet, nbcol)
-persp(c(unique(hqs[,1])),c(unique(hqs[,2])), hplot, zlim=c(0,2.5),col = color[facetcol], xlab="Multifractal Parameters(Q)", ylab="Scales(S)", zlab = "Hurst Exponent", phi=25, theta=-45, ticktype="detailed")
-}
+mma()
