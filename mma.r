@@ -76,8 +76,8 @@ mma<-function()
 	# This will be used to make a 3D Hurst Surface
 	hqRows <- (((smax / 5) - smin) / sspacing) * length(qlist)
 	hqs <- matrix(NA, nrow=hqRows, ncol=3)
-	for (sit in seq(smin, (smax / 5), sspacing)){
-		for(qit in qlist){
+	for (sit in seq(smin, (smax / 5), sspacing)) {
+		for(qit in qlist) {
 			fittemp <- fqsll[fqsll[,1] == qit & fqsll[,2] >= sit & fqsll[,2] <= 5*sit,]
 			htemp <- lm(fittemp[,4] ~ fittemp[,3])
 			row <- c(qit, 3 * sit, htemp[[1]][[2]])
@@ -91,7 +91,7 @@ mma<-function()
 	hplot<-t(matrix(hqs[,3], nrow = length(hqs[,3]) / length(qlist), byrow=T))
 
 	# Generate the desired number of colors from this palette
-	jet.colors <- colorRampPalette( c( "#2c00cc", "#cc0000") ) 
+	jet.colors <- colorRampPalette( c( "#2c00cc", "#cc0000") )
 	nbcol <- 100
 	color <- jet.colors(nbcol)
 
