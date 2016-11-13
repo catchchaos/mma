@@ -1,4 +1,3 @@
-overlapping <- 0#0 - time series is partitioned into no overlapping windows of analysis, 1- time series is partitioned into overlapping windows of analysis, step between consecutive windows is = 1 (much longer calculations)
 smin <- 10      #minimal s scale used, when calculating Fq(s) functions family (default 10)
 smax <- 600     #maximal s scale used, when calculating Fq(s) functions family, has to be multiple of 5 (default 600; in general should be near to N/50, where N is a time series length)
 qmin <- -5      #minimal multifractal parameter q used (default -5)
@@ -94,14 +93,6 @@ for(sit in seq(smin, (smax/5), sspacing)){
 hqs<-na.omit(hqs)
 # Reshape hqs values to a matrix so that we can plot it as a surface
 hplot<-t(matrix(hqs[,3],nrow=length(hqs[,3])/length(qlist),byrow=T))
-
-#if(max(hplot) < 1.5){
-#hlim = 1.5
-#} else if (max(hplot) < 2.5){
-#hlim = 2.5
-#} else {
-#hlim = ceil((max(hplot)*10))/10
-#}
 
 # Generate the desired number of colors from this palette
 jet.colors <- colorRampPalette( c( "#2c00cc", "#cc0000") ) 
