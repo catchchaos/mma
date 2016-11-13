@@ -1,5 +1,5 @@
 
-mma<-function()
+mma<-function(data_file)
 {
 	smin <- 10      #minimal s scale used, when calculating Fq(s) functions family (default 10)
 	smax <- 600     #maximal s scale used, when calculating Fq(s) functions family, has to be multiple of 5 (default 600; in general should be near to N/50, where N is a time series length)
@@ -15,7 +15,7 @@ mma<-function()
 	}
 
 	# Read data from file - numbers alone, one per line in text file
-	signal <- read.table("data.txt")
+	signal <- read.table(data_file)
 	# Find profile of the signal by calculating cumulative sum for the whole series
 	prof = apply(signal[1][1], 2, cumsum)
 	slength = length(prof)
@@ -30,7 +30,7 @@ mma<-function()
 	for (s in smin:smax) {
 		#Reshape the profiled signal into a matrix, so that we can extract segments
 		ind <- c(1:slength)
-		coordinates <- t(matrix(ind[1:(slength - (slength %% s))], s, (slength - slength %% s)) / s))
+		coordinates <- t(matrix(ind[1:(slength - (slength %% s))], s, (slength - slength %% s)) / s)
 		segments <- matrix(prof, nrow(coordinates), ncol(coordinates), byrow=T)
 		#Set of bases upto s
 		xbase <- seq(1,s,1)
@@ -102,4 +102,9 @@ mma<-function()
 	persp(c(unique(hqs[,1])), c(unique(hqs[,2])), hplot, zlim=c(0,2.5), col = color[facetcol], xlab="Multifractal Parameters(Q)", ylab="Scales(S)", zlab = "Hurst Exponent", phi=25, theta=-45, ticktype="detailed")
 }
 
-mma()
+args <- commandArgs(trailingOnly=TRUE)
+if (length(args) != 1) {
+	print("Usage: Rscript file.txt")
+} else {
+	mma(args[1])
+}
