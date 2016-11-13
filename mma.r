@@ -13,7 +13,7 @@ for(i in 1:length(qlist)){
 #cat(qlist);
 
 # Read data from file - numbers alone, one per line in text file
-signal <- read.table("C:\\Users\\AMOGHA\\Documents\\MATLAB\\data.txt")
+signal <- read.table("data.txt")
 # Find profile of the signal by calculating cumulative sum for the whole series
 prof = apply(signal[1][1],2,cumsum)
 slength = length(prof)
