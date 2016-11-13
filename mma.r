@@ -1,3 +1,6 @@
+
+mma<-function()
+{
 smin <- 10      #minimal s scale used, when calculating Fq(s) functions family (default 10)
 smax <- 600     #maximal s scale used, when calculating Fq(s) functions family, has to be multiple of 5 (default 600; in general should be near to N/50, where N is a time series length)
 qmin <- -5      #minimal multifractal parameter q used (default -5)
@@ -104,4 +107,4 @@ zfacet <- hplot[-1, -1] + hplot[-1, -ncol(hplot)] + hplot[-nrow(hplot), -1] + hp
 # Recode facet z-values into color indices
 facetcol <- cut(zfacet, nbcol)
 persp(c(unique(hqs[,1])),c(unique(hqs[,2])), hplot, zlim=c(0,2.5),col = color[facetcol], xlab="Multifractal Parameters(Q)", ylab="Scales(S)", zlab = "Hurst Exponent", phi=25, theta=-45, ticktype="detailed")
-
+}
